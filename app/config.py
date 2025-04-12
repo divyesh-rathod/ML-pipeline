@@ -1,0 +1,32 @@
+from pydantic_settings import BaseSettings
+from pydantic import Field
+
+class Settings(BaseSettings):
+    # Define the settings you need, with defaults and environment variable names.
+    # For example, a PostgreSQL connection URL:
+    DATABASE_URL: str = Field(..., env="DATABASE_URL")
+    
+    # Other configuration values, such as secret keys or debug mode:
+    SECRET_KEY: str = Field("your-default-secret", env="SECRET_KEY")
+    DEBUG: bool = Field(False, env="DEBUG")
+    
+    # Additional settings can be added here:
+    # For instance, port, host settings, API version, etc.
+    APP_HOST: str = Field("127.0.0.1", env="APP_HOST")
+    APP_PORT: int = Field(8000, env="APP_PORT")
+
+    class Config:
+        # By default, Pydantic will automatically read environment variables.
+        # Optionally, you can specify an .env file here:
+        env_file = ".env"
+        env_file_encoding = "utf-8"
+
+# Instantiate the settings object which will be used throughout your app:
+settings = Settings()
+
+if __name__ == "__main__":
+    # For demonstration purposes: print out the configuration
+    print("DATABASE_URL:", settings.DATABASE_URL)
+    print("DEBUG:", settings.DEBUG)
+    print("APP_HOST:", settings.APP_HOST)
+    print("APP_PORT:", settings.APP_PORT)

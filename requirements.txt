@@ -7,3 +7,4 @@ spacy>=3.8.0
 beautifulsoup4>=4.10.0
 alembic
 lxml==5.3.2
+uvicorn[standard]

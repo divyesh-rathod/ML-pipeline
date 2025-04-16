@@ -3,6 +3,7 @@ from sqlalchemy import Column, Text, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 import sqlalchemy as sa
+from pgvector.sqlalchemy import Vector
 from app.db.models.article import Article, Base
 
 class ProcessedArticle(Base):
@@ -22,6 +23,7 @@ class ProcessedArticle(Base):
     processed_at = Column(DateTime(timezone=True),
                           server_default=sa.text('CURRENT_TIMESTAMP'),
                           nullable=False)
+    embedding = Column(Vector(768), nullable=True)  # from SBERT
 
     article = relationship(
         "Article",

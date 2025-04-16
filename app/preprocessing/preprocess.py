@@ -53,7 +53,7 @@ def process_articles():
                 cleaned_text=cleaned_desc,
                 category_1=(article.categories[0] if article.categories else None),  
                 category_2=vector_input, 
-               
+                embedding=None,  
             )
             db.add(p)
 

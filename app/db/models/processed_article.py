@@ -23,7 +23,7 @@ class ProcessedArticle(Base):
     processed_at = Column(DateTime(timezone=True),
                           server_default=sa.text('CURRENT_TIMESTAMP'),
                           nullable=False)
-    embedding = Column(Vector(768), nullable=True)  # from SBERT
+    embedding = Column(Vector(384), nullable=True)  # from SBERT
 
     article = relationship(
         "Article",

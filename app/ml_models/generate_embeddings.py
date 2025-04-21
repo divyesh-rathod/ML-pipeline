@@ -1,5 +1,5 @@
 from app.db.session import SessionLocal
-from utils.sbert_helper import embed_articles  # our helper function
+from app.utils.sbert_helper import embed_articles  # our helper function
 
 def main():
     # Create a new database session

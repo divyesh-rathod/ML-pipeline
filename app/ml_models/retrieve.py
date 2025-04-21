@@ -1,6 +1,7 @@
-from sqlalchemy import Float, asc
+from sqlalchemy import Float, desc,asc
 from sqlalchemy.orm import Session
 from app.db.models.processed_article import ProcessedArticle
+from app.ml_models.rerank import rerank_top_k
 
 def get_top_50_cosine_similar_articles(db: Session, article_id: str):
  
@@ -39,8 +40,18 @@ if __name__ == "__main__":
     from app.db.session import SessionLocal  # your session maker
     db = SessionLocal()
     try:
-        example_article_id = "000d8e29-c06e-454a-bd76-baf545d85fea"
+        example_article_id = "016d46e0-5e3e-441b-9bc2-ad21751483be"
         similar_articles = get_top_50_cosine_similar_articles(db, example_article_id)
+
+        candidates = [art for art, _ in similar_articles]
+
+    # 2) rerank those 50 with cross‑encoder
+        query_text = db.query(ProcessedArticle).get(example_article_id).cleaned_text
+        top5 = rerank_top_k(query_text, candidates, top_n=5)
+
+        # 3) Print or return the final top‑5
+        for art, score in top5:
+            print(f"{art.article_id} → cross‑encoder score {score:.4f}")
         
         for article, distance in similar_articles:
             print(f"Article ID: {article.article_id}, Cosine Distance: {distance}")

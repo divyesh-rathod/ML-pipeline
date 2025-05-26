@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     
     # Other configuration values, such as secret keys or debug mode:
     SECRET_KEY: str = Field("your-default-secret", env="SECRET_KEY")
+    ALGORITHM: str = Field("HS256", env="ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_DAYS: int = Field(15, env="ACCESS_TOKEN_EXPIRE_DAYS")
+
     DEBUG: bool = Field(False, env="DEBUG")
     
     # Additional settings can be added here:

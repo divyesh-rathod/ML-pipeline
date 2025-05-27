@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # Additional settings can be added here:
     # For instance, port, host settings, API version, etc.
     APP_HOST: str = Field("127.0.0.1", env="APP_HOST")
-    APP_PORT: int = Field(8000, env="APP_PORT")
+    APP_PORT: int = Field(8080, env="APP_PORT")
 
     class Config:
         env_file = str(env_path)

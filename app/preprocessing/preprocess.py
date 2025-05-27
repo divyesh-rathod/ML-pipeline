@@ -32,7 +32,7 @@ async def process_articles() -> None:
     Fetch all Article rows, clean and transform them, and
     write corresponding ProcessedArticle rows asynchronously.
     """
-    async with AsyncSessionLocal() as session:  # type: AsyncSession
+    async with AsyncSessionLocal() as session:  
         try:
             # 1) Load all articles
             result = await session.execute(select(Article))

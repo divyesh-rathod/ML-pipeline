@@ -1,50 +1,68 @@
-# app/services/user_service.py
-
-from app.db.session import SessionLocal
-from app.db.models.user import User
+import asyncio
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
+from app.db.session import AsyncSessionLocal
+from app.db.models.user import User
 from app.schemas.user_schema import UserCreate
-import datetime
+from app.utils.auth import create_access_token
 
-# set up a password‐hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def create_user(user_in: UserCreate) -> User:
-    """
-    :param user_in: Pydantic model with {name, email, phone_number, password}
-    :returns: newly created User ORM object
-    """
-    db = SessionLocal()
-    try:
-        # hash the incoming password
-        hashed_pw = pwd_context.hash(user_in.password)
+async def create_user(user_details: UserCreate) -> User:
+   
+    loop = asyncio.get_running_loop()
+    hashed_pw = await loop.run_in_executor(None, pwd_context.hash, user_details.password)
 
-        # build the User ORM object
+    if await email_exists(user_details.email):
+        raise ValueError("Email already exists")    
+    
+    async with AsyncSessionLocal() as session:  
         new_user = User(
-            name=user_in.name,
-            email=user_in.email,
-            phone_number=user_in.phone_number,
+            name=user_details.name,
+            email=user_details.email,
+            phone_number=user_details.phone_number,
             password=hashed_pw,
-            # created_at / updated_at default handled by the model
         )
+        session.add(new_user)
+        await session.commit()
+        await session.refresh(new_user)
 
-        # save
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-        return new_user
+    # At this point new_user.id is available
+    access_token = await create_access_token(
+        data={"user_id": str(new_user.id), "email": new_user.email}
+    )
 
-    finally:
-        db.close()
+    return new_user, access_token
 
-def get_user_by_email(email: str) -> User:
-    """
-    :param email: email address to search for
-    :returns: User ORM object if found, else None
-    """
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter(User.email == email).first()
-        return user
-    finally:
-        db.close()
+async def get_user_by_email(email: str) -> User | None:
+
+    async with AsyncSessionLocal() as session:  
+        result = await session.execute(
+            select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none()
+    
+async def email_exists(email:str)-> bool:
+    async with AsyncSessionLocal() as session:  
+        result = await session.execute(
+            select(User).where(User.email == email)
+        )
+        return result.scalar_one_or_none() is not None
+    
+async def login_user(email: str, password: str) -> tuple[User, str]:
+    user = await get_user_by_email(email)
+    
+    if not user or not pwd_context.verify(password, user.password):
+        raise ValueError("Invalid email or password")
+    
+    if user.is_blocked :
+        raise ValueError("User is blocked")
+    if user.is_deleted:
+        raise ValueError("Your account has been deleted")
+    
+    access_token = await create_access_token(
+        data={"user_id": str(user.id), "email": user.email}
+    )
+    
+    return user, access_token

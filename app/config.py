@@ -1,5 +1,10 @@
 from pydantic_settings import BaseSettings
 from pydantic import Field
+from pathlib import Path
+from dotenv import load_dotenv
+
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 class Settings(BaseSettings):
     # Define the settings you need, with defaults and environment variable names.
@@ -19,9 +24,7 @@ class Settings(BaseSettings):
     APP_PORT: int = Field(8000, env="APP_PORT")
 
     class Config:
-        # By default, Pydantic will automatically read environment variables.
-        # Optionally, you can specify an .env file here:
-        env_file = ".env"
+        env_file = str(env_path)
         env_file_encoding = "utf-8"
 
 # Instantiate the settings object which will be used throughout your app:

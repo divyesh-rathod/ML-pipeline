@@ -36,3 +36,15 @@ def create_user(user_in: UserCreate) -> User:
 
     finally:
         db.close()
+
+def get_user_by_email(email: str) -> User:
+    """
+    :param email: email address to search for
+    :returns: User ORM object if found, else None
+    """
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        return user
+    finally:
+        db.close()

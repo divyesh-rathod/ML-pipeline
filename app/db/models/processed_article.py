@@ -12,7 +12,7 @@ class ProcessedArticle(Base):
     # article_id is both the PK and a foreign key
     article_id = Column(
         UUID(as_uuid=True),
-        sa.ForeignKey("articles.id", ondelete="CASCADE"),
+        sa.ForeignKey("articles.id"),
         primary_key=True,
         nullable=False
     )

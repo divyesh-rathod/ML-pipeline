@@ -1,5 +1,8 @@
+import asyncio
 from sentence_transformers import SentenceTransformer
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import AsyncSessionLocal
 from app.db.models.processed_article import ProcessedArticle
 import numpy as np
 
@@ -14,22 +17,32 @@ def generate_embedding(text: str) -> list[float]:
         return None
     embedding = model.encode(text)
     norm = np.linalg.norm(embedding)
-    if norm == 0:  
+    if norm == 0:
         return embedding.tolist()
-    normalized_embedding = embedding / norm
-    return normalized_embedding.tolist()
+    return (embedding / norm).tolist()
 
-
-
-def embed_articles(db: Session, batch_size: int = 100):
+async def embed_articles(batch_size: int = 100) -> str:
     """
-    Loop through articles with null embeddings and generate them.
+    Loop through articles with null embeddings and generate them asynchronously.
     """
-    articles = db.query(ProcessedArticle).filter(ProcessedArticle.embedding == None).limit(batch_size).all()
+    async with AsyncSessionLocal() as session:  
+        # fetch articles needing embeddings
+        result = await session.execute(
+            select(ProcessedArticle)
+            .filter(ProcessedArticle.embedding == None)
+            .limit(batch_size)
+        )
+        articles = result.scalars().all()
 
-    for article in articles:
-        if article.category_2:
-            article.embedding = generate_embedding(article.category_2)
+        for article in articles:
+            if article.category_2:
+                # run the blocking generate_embedding in a thread pool
+                embedding = await asyncio.get_running_loop().run_in_executor(
+                    None, generate_embedding, article.category_2
+                )
+                article.embedding = embedding
 
-    db.commit()
-    return f"{len(articles)} articles embedded and saved."
+        await session.commit()
+        return f"{len(articles)} articles embedded and saved."
+
+

@@ -47,7 +47,7 @@ async def get_top_50_cosine_similar_articles(
 
 
 async def main():
-    example_article_id = "1bb48dbc-76e3-48c0-ab57-fede4d8738d8"
+    example_article_id = "fecf8133-412a-40ae-9462-f4e86308e843"
     async with AsyncSessionLocal() as session:
         # 1) Get top-50 by vector distance
         similar = await get_top_50_cosine_similar_articles(session, example_article_id)

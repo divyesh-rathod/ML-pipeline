@@ -66,3 +66,40 @@ async def login_user(email: str, password: str) -> tuple[User, str]:
     )
     
     return user, access_token
+
+async def update_user(
+    user_id: str,
+    name: str | None = None,
+    phone_number: str | None = None,
+    profile_picture: str | None = None
+) -> User:
+    
+    async with AsyncSessionLocal() as session:  
+        result = await session.execute(
+            select(User).where(User.id == user_id)
+        )
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            raise ValueError("User not found")
+        
+        if name:
+            user.name = name
+        if phone_number:
+            user.phone_number = phone_number
+        if profile_picture:
+            user.profile_picture = profile_picture
+        
+        await session.commit()
+        await session.refresh(user)
+    
+    return user
+
+
+async def get_user_by_id(user_id: str) -> User | None:
+    async with AsyncSessionLocal() as session:  
+        result = await session.execute(
+            select(User).where(User.id == user_id)
+        )
+        return result.scalar_one_or_none()  
+    

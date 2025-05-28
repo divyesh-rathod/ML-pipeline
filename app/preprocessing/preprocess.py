@@ -35,7 +35,7 @@ async def process_articles() -> None:
     async with AsyncSessionLocal() as session:  
         try:
             # 1) Load all articles
-            result = await session.execute(select(Article))
+            result = await session.execute(select(Article).where(Article.processed == False))
             articles_to_process = result.scalars().all()
 
             for article in articles_to_process:

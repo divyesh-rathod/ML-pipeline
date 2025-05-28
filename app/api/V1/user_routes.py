@@ -1,18 +1,10 @@
-# app/api/v1/user_router.py
-from fastapi import APIRouter, HTTPException, status
-from app.schemas.user_schema import UserCreate, UserWithToken,UserLogin
-from app.controller.user_controller import create_user_controller, login_user_controller
+
+from fastapi import APIRouter, Depends
+from app.schemas.user_schema import UserResponse
+from app.utils.auth import get_current_user
+
 router = APIRouter(
-   
-    tags=["users"],
-    responses={404: {"description": "Not found"}},
+    prefix="/users",
+    tags=["Users"],
+    dependencies=[Depends(get_current_user)],    # protect every endpoint here
 )
-@router.post("/signup", response_model=UserWithToken)
-async def signup(user_details: UserCreate):
-    return await create_user_controller(user_details)
-
-@router.post("/login", response_model=UserWithToken)
-async def login(user_credentials: UserLogin):
-    return await login_user_controller(user_credentials.email, user_credentials.password)
-
-

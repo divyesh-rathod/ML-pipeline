@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text
+from sqlalchemy import Column, Text, Boolean,text
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -24,6 +24,7 @@ class Article(Base):
     pub_date = Column(Text)
     description = Column(Text)
     categories = Column(ARRAY(Text))
+    processed = Column(Boolean, server_default=text("false"), nullable=False)
 
     processed_article = relationship(
         "ProcessedArticle",

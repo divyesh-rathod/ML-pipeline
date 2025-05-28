@@ -1,59 +1,73 @@
-from sqlalchemy import Float, desc,asc
-from sqlalchemy.orm import Session
+# app/services/similarity_service.py
+
+import asyncio
+from typing import List, Tuple
+
+from sqlalchemy import Float, asc
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.session import AsyncSessionLocal
 from app.db.models.processed_article import ProcessedArticle
 from app.ml_models.rerank import rerank_top_k
 
-def get_top_50_cosine_similar_articles(db: Session, article_id: str):
- 
-      # Retrieve the source article's embedding.
-    source_article = db.query(ProcessedArticle).filter(ProcessedArticle.article_id == article_id).first()
+async def get_top_50_cosine_similar_articles(
+    session: AsyncSession,
+    article_id: str
+) -> List[Tuple[ProcessedArticle, float]]:
+    """
+    Return the 50 nearest neighbors by cosine distance (using pgvector's <-> operator).
+    """
+    # 1) Fetch the source article
+    result = await session.execute(
+        select(ProcessedArticle).where(ProcessedArticle.article_id == article_id)
+    )
+    source_article = result.scalars().first()
     if not source_article:
         raise ValueError(f"No article found with article_id: {article_id}")
-    
-    # Use an explicit check for None (or empty embedding)
     if source_article.embedding is None:
         raise ValueError(f"Article {article_id} does not have an embedding.")
-    
-    source_embedding = source_article.embedding
-    
-     # 2) build the distance expression and cast it to Float
+
+    # 2) Build the distance expression
     distance_expr = (
         ProcessedArticle.embedding
-        .op("<->")(source_article.embedding)    # Euclidean on normalized → cosine
-        .cast(Float)                    # ← tell SQLAlchemy this yields a float
+        .op("<->")(source_article.embedding)  # Euclidean on normalized → cosine
+        .cast(Float)
         .label("distance")
     )
-    
-    # Query for articles excluding the source, ordering by cosine similarity (lower distance is better).
-    query = (
-        db.query(ProcessedArticle, distance_expr)
-          .filter(ProcessedArticle.article_id != article_id)
-          .order_by(asc(distance_expr))
-          .limit(50)
-          .all()
+
+    # 3) Query for nearest 50 (excluding the source)
+    stmt = (
+        select(ProcessedArticle, distance_expr)
+        .where(ProcessedArticle.article_id != article_id)
+        .order_by(asc(distance_expr))
+        .limit(50)
     )
-    
-    return query
+    results = await session.execute(stmt)
+    return results.all()
 
-# Example usage:
-if __name__ == "__main__":
-    from app.db.session import SessionLocal  # your session maker
-    db = SessionLocal()
-    try:
-        example_article_id = "016d46e0-5e3e-441b-9bc2-ad21751483be"
-        similar_articles = get_top_50_cosine_similar_articles(db, example_article_id)
 
-        candidates = [art for art, _ in similar_articles]
+async def main():
+    example_article_id = "1bb48dbc-76e3-48c0-ab57-fede4d8738d8"
+    async with AsyncSessionLocal() as session:
+        # 1) Get top-50 by vector distance
+        similar = await get_top_50_cosine_similar_articles(session, example_article_id)
+        candidates = [art for art, _ in similar]
 
-    # 2) rerank those 50 with cross‑encoder
-        query_text = db.query(ProcessedArticle).get(example_article_id).cleaned_text
-        top5 = rerank_top_k(query_text, candidates, top_n=5)
+        # 2) Rerank top-50 with cross-encoder
+        #    Fetch the query text
+        result = await session.execute(
+            select(ProcessedArticle.cleaned_text)
+            .where(ProcessedArticle.article_id == example_article_id)
+        )
+        query_text = result.scalars().first() or ""
 
-        # 3) Print or return the final top‑5
+        top5 = await rerank_top_k(query_text, candidates, top_n=5)
+
+        # 3) Output
         for art, score in top5:
-            print(f"{art.article_id} → cross‑encoder score {score:.4f}")
-        
-        for article, distance in similar_articles:
-            print(f"Article ID: {article.article_id}, Cosine Distance: {distance}")
-    finally:
-        db.close()
+            print(f"{art.article_id} → cross-encoder score {score:.4f}")
+        for art, distance in similar:
+            print(f"Article ID: {art.article_id}, Cosine Distance: {distance:.4f}")
+
+if __name__ == "__main__":
+    asyncio.run(main())

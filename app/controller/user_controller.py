@@ -1,24 +1,15 @@
 # app/controllers/user_controller.py
 from fastapi import HTTPException, status
-from app.schemas.user_schema import UserCreate, UserWithToken
-from app.services.user_services import create_user, login_user,update_user
+from app.schemas.user_schema import UpdateUserSchema, UserResponse
+from app.services.user_services import update_user
 
-async def create_user_controller(user_details: UserCreate) -> UserWithToken:
+
+
+
+async def update_user_controller(user_details: UpdateUserSchema,current_user:UserResponse) -> UserResponse:
     try:
-        user, token = await create_user(user_details)
+        user = await update_user(user_details,current_user)
+        return user
     except ValueError as e:
-        # map domain error to HTTP 400
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return {"user": user, "access_token": token, "token_type": "bearer"}
-
-
-async def login_user_controller(email: str, password: str) -> UserWithToken:
-    try:
-        user, token = await login_user(email, password)
-    except ValueError as e:
-        # map domain error to HTTP 400
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    return {"user": user, "access_token": token, "token_type": "bearer"}
-
-
 

@@ -1,10 +1,9 @@
 # app/api/v1/auth_router.py
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.user_schema import UserCreate, UserWithToken, UserLogin
-from app.controller.user_controller import create_user_controller, login_user_controller
+from app.controller.auth_controller import create_user_controller, login_user_controller
 
 router = APIRouter(
-    prefix="/auth",
     tags=["Auth"],
     responses={404: {"description": "Not found"}},
 )

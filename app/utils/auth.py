@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 import jwt
 
 from app.config import settings
-from app.services.user_services import get_user_by_id
+
 
 
 async def create_access_token(
@@ -64,6 +64,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         )
 
     # 2) Look up the user (by sub/ID or email in payload)
+    from app.services.user_services import get_user_by_id
     user = await get_user_by_id(payload["user_id"])
     if not user:
         raise HTTPException(

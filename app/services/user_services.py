@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from passlib.context import CryptContext
 from app.db.session import AsyncSessionLocal
 from app.db.models.user import User
-from app.schemas.user_schema import UserCreate
+from app.schemas.user_schema import UserCreate,UpdateUserSchema
 from app.utils.auth import create_access_token
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -68,32 +68,31 @@ async def login_user(email: str, password: str) -> tuple[User, str]:
     return user, access_token
 
 async def update_user(
-    user_id: str,
-    name: str | None = None,
-    phone_number: str | None = None,
-    profile_picture: str | None = None
+    user_details: UpdateUserSchema,
+    current_user: User
 ) -> User:
-    
     async with AsyncSessionLocal() as session:  
+   
         result = await session.execute(
-            select(User).where(User.id == user_id)
+            select(User).where(User.id == current_user.id)
         )
         user = result.scalar_one_or_none()
-        
         if not user:
             raise ValueError("User not found")
-        
-        if name:
-            user.name = name
-        if phone_number:
-            user.phone_number = phone_number
-        if profile_picture:
-            user.profile_picture = profile_picture
-        
+
+    
+        if user_details.name:
+            user.name = user_details.name
+        if user_details.phone_number:
+            user.phone_number = user_details.phone_number
+        if user_details.profile_picture:
+            user.profile_picture = user_details.profile_picture
+
+       
         await session.commit()
         await session.refresh(user)
-    
-    return user
+
+        return user
 
 
 async def get_user_by_id(user_id: str) -> User | None:

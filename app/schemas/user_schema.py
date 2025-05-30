@@ -39,3 +39,12 @@ class UserLogin(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class UpdateUserSchema(BaseModel):
+    name: Optional[str] = None
+    phone_number: Optional[str] = None
+    profile_picture: Optional[str] = None
+
+    class Config:
+        orm_mode = True

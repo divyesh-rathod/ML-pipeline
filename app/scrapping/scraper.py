@@ -7,6 +7,8 @@ import httpx
 from bs4 import BeautifulSoup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from email.utils import parsedate_to_datetime
+from datetime import datetime
 from app.db.session import AsyncSessionLocal
 from app.db.models.article import Article
 
@@ -40,7 +42,15 @@ def parse_rss_items(soup: BeautifulSoup) -> list[dict]:
     for item in items:
         title = item.find("title").text if item.find("title") else "No Title"
         link = item.find("link").text if item.find("link") else "No Link"
-        pub_date = item.find("pubDate").text if item.find("pubDate") else "No Publication Date"
+        raw_pub = item.find("pubDate").text if item.find("pubDate") else None
+        if raw_pub:
+            try:
+                pub_date = parsedate_to_datetime(raw_pub)
+            except (TypeError, ValueError):
+                # fallback if parsing fails
+                pub_date = None
+        else:
+            pub_date = None
         description = item.find("description").text if item.find("description") else "No Description"
         categories = [cat.text.strip() for cat in item.find_all("category")]
         articles.append({

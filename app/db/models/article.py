@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Text, Boolean,text
+from sqlalchemy import Column, Text, Boolean,text,DateTime
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -21,7 +21,11 @@ class Article(Base):
 
     title = Column(Text, nullable=False)
     link = Column(Text, nullable=False, unique=True)
-    pub_date = Column(Text)
+    pub_date = Column(
+    DateTime(timezone=True),
+    nullable=False,
+    index=True,
+  )
     description = Column(Text)
     categories = Column(ARRAY(Text))
     processed = Column(Boolean, server_default=text("false"), nullable=False)

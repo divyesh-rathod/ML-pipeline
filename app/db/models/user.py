@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Text, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 from app.db.base import Base
 import uuid
 
@@ -33,3 +34,4 @@ class User(Base):
         onupdate=func.now(),
         nullable=False
     )
+    feed_position = relationship("UserFeedPosition", back_populates="user", uselist=False)

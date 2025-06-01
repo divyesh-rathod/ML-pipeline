@@ -23,7 +23,7 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserWithToken(BaseModel):
     user: UserResponse
@@ -31,14 +31,14 @@ class UserWithToken(BaseModel):
     token_type: str = "bearer"
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UpdateUserSchema(BaseModel):
@@ -47,4 +47,4 @@ class UpdateUserSchema(BaseModel):
     profile_picture: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

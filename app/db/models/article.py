@@ -35,3 +35,8 @@ class Article(Base):
         back_populates="article",
         uselist=False
     )
+    user_likes = relationship(
+        "Like",
+        back_populates="article",
+        cascade="all, delete-orphan",
+    )

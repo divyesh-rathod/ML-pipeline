@@ -35,3 +35,5 @@ class User(Base):
         nullable=False
     )
     feed_position = relationship("UserFeedPosition", back_populates="user", uselist=False)
+    article_likes = relationship( "Like",back_populates="user",cascade="all, delete-orphan",)
+

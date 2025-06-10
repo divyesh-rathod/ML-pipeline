@@ -1,4 +1,5 @@
 from datetime import datetime
+from uuid import UUID
 from pydantic import BaseModel, Field
 from typing import List, Optional
 from uuid import UUID
@@ -44,3 +45,26 @@ class UpdateLastReadRequest(BaseModel):
     # Optionally you could let the client specify a custom timestamp,
     # or simply ignore it and set `last_read_date = now()` server‐side.
     last_read_date: datetime | None = None
+
+
+
+
+
+class ArticleBase(BaseModel):
+    article_id: UUID
+    cleaned_text: str
+    category_1: Optional[str] = None
+    category_2: Optional[str] = None
+
+class ArticleScore(ArticleBase):
+    score: float
+
+    class Config:
+        orm_mode = True  # if you ever want to return ORM models directly
+
+class ToggleLikeResponse(BaseModel):
+    message: str
+    liked: bool
+    top5: List[ArticleScore]
+    similar: List[ArticleScore]
+

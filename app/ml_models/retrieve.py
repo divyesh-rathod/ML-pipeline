@@ -5,6 +5,7 @@ from typing import List, Tuple
 
 from sqlalchemy import Float, asc
 from sqlalchemy import select
+from sqlalchemy.orm import load_only
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import AsyncSessionLocal
 from app.db.models.processed_article import ProcessedArticle
@@ -46,28 +47,33 @@ async def get_top_50_cosine_similar_articles(
     return results.all()
 
 
-async def main():
+async def main(article_id: str = None):
     example_article_id = "fecf8133-412a-40ae-9462-f4e86308e843"
     async with AsyncSessionLocal() as session:
         # 1) Get top-50 by vector distance
-        similar = await get_top_50_cosine_similar_articles(session, example_article_id)
+        similar = await get_top_50_cosine_similar_articles(session, article_id)
         candidates = [art for art, _ in similar]
 
         # 2) Rerank top-50 with cross-encoder
         #    Fetch the query text
-        result = await session.execute(
-            select(ProcessedArticle.cleaned_text)
-            .where(ProcessedArticle.article_id == example_article_id)
-        )
-        query_text = result.scalars().first() or ""
+    stmt = (
+        select(ProcessedArticle)
+        .options(load_only("article_id", "cleaned_text", "category_1", "category_2"))
+        .where(ProcessedArticle.article_id == example_article_id)
+    )
+    result = await session.execute(stmt)
 
-        top5 = await rerank_top_k(query_text, candidates, top_n=5)
+    query_text = result.scalars().first() or ""
 
-        # 3) Output
-        for art, score in top5:
-            print(f"{art.article_id} → cross-encoder score {score:.4f}")
-        for art, distance in similar:
-            print(f"Article ID: {art.article_id}, Cosine Distance: {distance:.4f}")
+    top5 = await rerank_top_k(query_text, candidates, top_n=5)
+
+    return top5, similar
+
+        # # 3) Output
+        # for art, score in top5:
+        #     print(f"{art.article_id} → cross-encoder score {score:.4f}")
+        # for art, distance in similar:
+        #     print(f"Article ID: {art.article_id}, Cosine Distance: {distance:.4f}")
 
 if __name__ == "__main__":
     asyncio.run(main())

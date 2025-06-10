@@ -1,7 +1,8 @@
+from typing import Tuple
 from fastapi import HTTPException,status
-from app.services.news_services import mark_article_as_read, get_unseen_processed_articles_for_user,set_last_read_date
+from app.services.news_services import mark_article_as_read, get_unseen_processed_articles_for_user,set_last_read_date, toggle_article_like
 from app.schemas.user_schema import UserResponse
-from app.schemas.news_schema import UnseenArticlesQuery, UnseenArticlesResponse,UnseenProcessedArticle,UpdateLastReadRequest
+from app.schemas.news_schema import ToggleLikeResponse, UnseenArticlesQuery, UnseenArticlesResponse,UnseenProcessedArticle,UpdateLastReadRequest
 
 
 async def mark_article_as_read_controller(article_id: str, current_user: UserResponse) -> str:
@@ -22,7 +23,7 @@ async def get_unseen_processed_articles_controller(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred")
-   '' 
+   
 async def set_last_read_date_controller(current_user: UserResponse,payload:UpdateLastReadRequest) -> str:
     try:
         result = await set_last_read_date(current_user, payload)
@@ -32,5 +33,13 @@ async def set_last_read_date_controller(current_user: UserResponse,payload:Updat
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred")
 
-
+async def toggle_article_like_controller(article_id: str, current_user: UserResponse) -> ToggleLikeResponse:
+    try:
+        message, liked, raw_top5, raw_similar = await toggle_article_like(article_id, current_user)
+        return message, liked, raw_top5, raw_similar
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred")
     
+

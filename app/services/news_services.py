@@ -4,7 +4,8 @@ from datetime import datetime
 from sqlalchemy import insert, update
 from sqlalchemy import select, desc, and_
 from app.db.session import AsyncSessionLocal
-from app.schemas.news_schema import UnseenProcessedArticle, UnseenArticlesResponse, UnseenArticlesQuery
+from app.schemas.news_schema import UnseenProcessedArticle, UnseenArticlesResponse, UnseenArticlesQuery,ToggleLikeResponse,ArticleScore
+from app.ml_models.retrieve import main
 from uuid import UUID
 
 
@@ -120,8 +121,81 @@ async def set_last_read_date(current_user: User, explicit_date: datetime | None 
             new_row = UserFeedPosition(user_id=current_user.id, last_read_date=new_date)
             session.add(new_row)
 
+
+
         await session.commit()
         return "Last read date updated successfully"
+    
+
+
+async def toggle_article_like(
+    article_id: UUID,
+    current_user: User
+) -> ToggleLikeResponse:
+    async with AsyncSessionLocal() as session:
+        # 1) Ensure the article exists
+        # result = await session.execute(
+        #     select(Article).where(Article.id == article_id)
+        # )
+        # article = result.scalar_one_or_none()
+        # if not article:
+        #     raise ValueError("Article not found")
+
+        # 2) Check if a Like row already exists
+        result = await session.execute(
+            select(Like).where(
+                Like.article_id == article_id,
+                Like.user_id    == current_user.id
+            )
+        )
+        existing_like = result.scalar_one_or_none()
+
+        if existing_like:
+            # 3A) Flip the 0/1 integer in Python, re‐add, and commit
+            existing_like.is_liked = existing_like.is_liked ^ 1
+            session.add(existing_like)
+            await session.commit()
+
+            # If it was 1 → becomes 0, we treat that as “Like removed”
+            if existing_like.is_liked == 0:
+                return "Like removed", False,[], []
+            else:
+                top5, similar = await main(str(article_id))
+                return "Article liked", True, top5, similar
+
+        else:
+            # 3B) No row yet → create a new one with is_liked=1
+            new_like = Like(
+                user_id    = current_user.id,
+                article_id = article_id,
+                is_liked   = 1
+            )
+            session.add(new_like)
+            await session.commit()
+
+            top5, similar = await main(str(article_id))
+
+
+            return "Article liked", True, top5, similar
+        
+
+def serialize_article_scores(raw: list[tuple[ProcessedArticle, float]]) -> list[ArticleScore]:
+    """
+    Convert List[(ProcessedArticle, float)] into List[ArticleScore] (or dicts).
+    """
+    results: list[ArticleScore] = []
+    for art_obj, score in raw:
+        # We can either pass an ORM object and let Pydantic read .article_id etc.
+        results.append(ArticleScore(
+            article_id=art_obj.article_id,
+            cleaned_text=art_obj.cleaned_text,
+            category_1=art_obj.category_1,
+            category_2=art_obj.category_2,
+            score=score
+        ))
+    return results
+
+
     
 
     

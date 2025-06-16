@@ -2,10 +2,12 @@ from app.db.models import *
 from typing import List, Optional, Tuple
 from datetime import datetime
 from sqlalchemy import insert, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select, desc, and_
 from app.db.session import AsyncSessionLocal
 from app.schemas.news_schema import UnseenProcessedArticle, UnseenArticlesResponse, UnseenArticlesQuery,ToggleLikeResponse,ArticleScore
 from app.ml_models.retrieve import main
+
 from uuid import UUID
 
 
@@ -39,65 +41,53 @@ async def get_unseen_processed_articles_for_user(
     params: UnseenArticlesQuery
 ) -> UnseenArticlesResponse:
     async with AsyncSessionLocal() as session:
-     
+
+        PA, A, UR = ProcessedArticle, Article, UserRead
+
+        # 1) Load or create the feed position row
         feed_pos = await session.get(UserFeedPosition, current_user.id)
         if not feed_pos:
-        
-            feed_pos = UserFeedPosition(user_id=current_user.id)
+            feed_pos = UserFeedPosition(user_id=current_user.id, cursor=None)
             session.add(feed_pos)
-            await session.flush()  
-            
+            await session.flush()     # now it exists with cursor=None
 
-        current_cursor: Optional[datetime] = feed_pos.cursor
+        current_cursor = feed_pos.cursor
 
-        PA = ProcessedArticle
-        A  = Article
-        UR = UserRead
-
-        stmt = (
+        # 2) Fetch the next batch of unread articles
+        base_q = (
             select(PA)
+            .options(selectinload(ProcessedArticle.article))  
             .join(A, PA.article_id == A.id)
-            .outerjoin(
-                UR,
-                and_(UR.article_id == A.id,
-                     UR.user_id    == current_user.id)
-            )
-            .where(UR.article_id.is_(None))  # only unread
+            .outerjoin(UR, and_(UR.article_id == A.id,
+                                UR.user_id    == current_user.id))
+            .where(UR.article_id.is_(None))
         )
 
         if current_cursor is None:
-
-            stmt = stmt.order_by(A.pub_date.desc())
+            base_q = base_q.order_by(A.pub_date.desc())
         else:
-         
-            stmt = stmt.order_by(
-                (A.pub_date > current_cursor).desc(),
-                A.pub_date.desc()
-            )
+            base_q = base_q.where(A.pub_date < current_cursor)\
+                           .order_by(A.pub_date.desc())
 
- 
-        stmt = stmt.limit(params.limit).offset(params.offset or 0)
-
+        stmt = base_q.limit(params.limit).offset(params.offset or 0)
         result = await session.execute(stmt)
-        processed_articles: List[ProcessedArticle] = result.scalars().all()
+        articles = result.scalars().all()
+        response_items = serialize_processed_articles(articles)
 
-   
-        if len(processed_articles) == params.limit:
-            next_cursor = processed_articles[-1].article.pub_date
+        # 3) Compute the new cursor as the oldest pub_date in this page
+        if articles:
+            next_cursor = articles[-1].article.pub_date
         else:
             next_cursor = None
 
-       
-        if feed_pos.cursor != next_cursor:
-            feed_pos.cursor = next_cursor
-            await session.commit()
-        else:
-    
-            await session.rollback()
+        # 4) Update the cursor on the existing ORM object and commit
+        feed_pos.cursor = next_cursor
+        await session.commit()
 
+        # 5) Return the response
         return UnseenArticlesResponse(
-            results     = processed_articles,
-            next_cursor = next_cursor
+            results=response_items,
+            next_cursor=next_cursor
         )
 
        
@@ -194,6 +184,31 @@ def serialize_article_scores(raw: list[tuple[ProcessedArticle, float]]) -> list[
             score=score
         ))
     return results
+
+
+def serialize_processed_articles(
+    pa_list: List[ProcessedArticle]
+) -> List[UnseenProcessedArticle]:
+    """
+    Turn a list of ProcessedArticle (with .article relationship loaded)
+    into a liof UnseenProcessedArticle Pydantic model
+    """
+    out: List[UnseenProcessedArticle] = []
+    for pa in pa_list:
+        art = pa.article
+        out.append(UnseenProcessedArticle(
+            article_id   = pa.article_id,
+            cleaned_text = pa.cleaned_text,
+            category_1   = pa.category_1,
+            category_2   = pa.category_2,
+            processed_at = pa.processed_at,
+            pub_date     = art.pub_date,
+            title        = art.title,
+            link         = art.link,
+            description  = art.description,
+            categories   = art.categories,
+        ))
+    return out
 
 
     

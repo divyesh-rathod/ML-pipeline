@@ -21,8 +21,8 @@ async def get_unseen_processed_articles_controller(
         return result
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred")
+    # except Exception as e:
+    #     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="An unexpected error occurred")
    
 async def set_last_read_date_controller(current_user: UserResponse,payload:UpdateLastReadRequest) -> str:
     try:

@@ -16,6 +16,10 @@ class UnseenArticlesQuery(BaseModel):
         ge=1, le=100,
         description="Maximum number of articles to return. Defaults to 20."
     )
+    offset:  int = Field(
+        0, ge=0,
+        description="Number of articles to skip (for paging)."
+    )
 
 class UnseenProcessedArticle(BaseModel):
   
@@ -24,7 +28,6 @@ class UnseenProcessedArticle(BaseModel):
     category_1: Optional[str]
     category_2: Optional[str]
     processed_at: datetime
-    embedding:  Optional[List[float]]
     pub_date:    datetime
     title:       str
     link:        str
@@ -40,6 +43,7 @@ class UnseenArticlesResponse(BaseModel):
   
     results:     List[UnseenProcessedArticle]
     next_cursor: Optional[datetime] = None
+
 
 class UpdateLastReadRequest(BaseModel):
     # Optionally you could let the client specify a custom timestamp,

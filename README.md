@@ -187,7 +187,7 @@ python -m app.ml_models.generate_embeddings
 
 ### Automated Pipeline (via API)
 ```bash
-curl -X POST "http://localhost:8080/api/V1/scripts/run_pipeline"
+curl -X POST "http://localhost:8000/api/V1/scripts/run_pipeline"
 ```
 
 The API endpoint uses `subprocess.run()` to execute each module sequentially with proper error handling.
@@ -250,4 +250,3 @@ The system includes:
 - **Error Handling:** Proper exception management and rollback logic
 - **Async Architecture:** Non-blocking operations throughout
 
-This is a complete, functional ML pipeline ready for production deployment with real-world performance characteristics.
